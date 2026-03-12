@@ -1,0 +1,124 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
+
+@theme {
+  /* Official iConvertNow Branding Colors */
+  --color-background: hsl(220 20% 8%);
+  --color-foreground: hsl(210 14% 96%);
+  --color-card: hsl(220 20% 12%);
+  --color-card-foreground: hsl(210 14% 96%);
+  --color-popover: hsl(220 20% 12%);
+  --color-popover-foreground: hsl(210 14% 96%);
+  
+  /* Primary Blue (#1E88E5) */
+  --color-primary: hsl(211 86% 54%);
+  --color-primary-foreground: hsl(220 20% 8%);
+  
+  /* Secondary Orange (#FF9800) */
+  --color-secondary: hsl(36 100% 50%);
+  --color-secondary-foreground: hsl(220 20% 8%);
+  
+  /* Accent matches secondary */
+  --color-accent: hsl(36 100% 50%);
+  --color-accent-foreground: hsl(220 20% 8%);
+  
+  /* Neutral colors */
+  --color-muted: hsl(220 13% 25%);
+  --color-muted-foreground: hsl(210 8% 60%);
+  --color-destructive: hsl(0 84% 60%);
+  --color-destructive-foreground: hsl(0 0% 100%);
+  --color-border: hsl(220 13% 20%);
+  --color-input: hsl(220 13% 20%);
+  --color-ring: hsl(211 86% 54%);
+  
+  /* Border radius */
+  --radius: 0.5rem;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+@layer components {
+  /* Gradient utilities */
+  .gradient-primary {
+    @apply bg-gradient-to-r from-primary via-secondary to-primary;
+  }
+
+  .gradient-secondary {
+    @apply bg-gradient-to-br from-secondary to-orange-500;
+  }
+
+  .gradient-text {
+    @apply bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent;
+  }
+
+  /* Button utilities */
+  .btn-gradient {
+    @apply bg-gradient-to-r from-primary to-secondary text-primary-foreground font-semibold rounded-lg transition-all duration-300 hover:shadow-lg hover:shadow-primary/40 hover:scale-105 active:scale-95;
+  }
+
+  .btn-gradient-secondary {
+    @apply bg-gradient-to-r from-secondary via-orange-500 to-orange-400 text-secondary-foreground font-semibold rounded-lg transition-all duration-300 hover:shadow-lg hover:shadow-secondary/40 hover:scale-105 active:scale-95;
+  }
+
+  .btn-outline {
+    @apply border-2 border-primary text-primary rounded-lg font-semibold transition-all duration-300 hover:bg-primary/10 hover:scale-105 active:scale-95;
+  }
+
+  /* Card utilities */
+  .card-glass {
+    @apply bg-card/50 backdrop-blur-xl border border-border/50 rounded-xl transition-all duration-300;
+  }
+
+  .card-premium {
+    @apply bg-gradient-to-br from-card to-card/50 border border-primary/20 rounded-xl shadow-lg shadow-primary/10 transition-all duration-300 hover:shadow-primary/20 hover:border-primary/40;
+  }
+
+  .card-hover {
+    @apply transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-primary/20;
+  }
+
+  /* Glow effects */
+  .glow-primary {
+    @apply shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all duration-300;
+  }
+
+  .glow-secondary {
+    @apply shadow-lg shadow-secondary/20 hover:shadow-secondary/40 transition-all duration-300;
+  }
+
+  /* Text utilities */
+  .text-heading {
+    @apply text-foreground font-bold tracking-tight;
+  }
+
+  .text-subheading {
+    @apply text-muted-foreground font-semibold;
+  }
+
+  /* Badge utilities */
+  .badge-primary {
+    @apply inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium bg-primary/10 text-primary border border-primary/20;
+  }
+
+  .badge-secondary {
+    @apply inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium bg-secondary/10 text-secondary border border-secondary/20;
+  }
+
+  /* Container utilities */
+  .container-premium {
+    @apply mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl;
+  }
+
+  .section-padding {
+    @apply py-16 sm:py-20 lg:py-24;
+  }
+}
