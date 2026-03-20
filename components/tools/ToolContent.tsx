@@ -1,896 +1,454 @@
 'use client'
 
 import { useState } from 'react'
-import type { Tool } from '@/data/tools'
-import { ToolLayout } from './ToolLayout'
-import { ToolInput } from './ToolInput'
-import { ToolOutput } from './ToolOutput'
+import { Copy, Download, AlertCircle, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { ToolLayout } from '@/components/tools/ToolLayout'
+import { ToolInput } from '@/components/tools/ToolInput'
+import { ToolOutput } from '@/components/tools/ToolOutput'
+import type { Tool } from '@/data/tools'
+import { healthCalculations, financeCalculations, conversionCalculations, timeCalculations, utilityCalculations } from '@/lib/tools/calculatorEngine'
+import { caseConverters, textAnalyzers, textCheckers, textConverters, formatGenerators } from '@/lib/tools/textProcessor'
+import { dataConverters, colorConverters, hashGenerators, jwtDecoder, codeFormatters } from '@/lib/tools/dataConverter'
 
 interface ToolContentProps {
   tool: Tool
 }
 
-// Placeholder generic tool
-function PlaceholderToolGeneric({ title, description }: { title: string; description: string }) {
-  return (
-    <ToolLayout title={title} description={description} explanation={<p>{description}</p>}>
-      <div className="p-8 text-center text-gray-400">
-        <p>This tool is coming soon. Stay tuned for updates!</p>
-      </div>
-    </ToolLayout>
-  )
-}
-
-function PlaceholderTool({ tool }: { tool: Tool }) {
-  return <PlaceholderToolGeneric title={tool.name} description={tool.description} />
-}
-
-// ===== DEVELOPER TOOLS =====
-
-function JsonToCsvTool() {
-  const [input, setInput] = useState('')
-  const [output, setOutput] = useState('')
-  const [error, setError] = useState('')
-
-  const handleConvert = () => {
-    try {
-      setError('')
-      const data = JSON.parse(input)
-      const array = Array.isArray(data) ? data : [data]
-      const headers = Object.keys(array[0] || {})
-      const csv = [
-        headers.join(','),
-        ...array.map(row =>
-          headers
-            .map(header => JSON.stringify(row[header] ?? ''))
-            .join(',')
-        ),
-      ].join('\n')
-      setOutput(csv)
-    } catch (e) {
-      setError(String(e))
-    }
-  }
-
-  return (
-    <ToolLayout
-      title="JSON to CSV Converter"
-      description="Convert JSON data to CSV format for easy spreadsheet import"
-      explanation={
-        <div className="space-y-4 text-gray-300">
-          <p>
-            Convert structured JSON data into comma-separated values (CSV) format for use in
-            spreadsheets and data analysis tools.
-          </p>
-        </div>
-      }
-    >
-      <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <ToolInput
-            value={input}
-            onChange={setInput}
-            placeholder="Paste your JSON array or object..."
-            label="JSON Input"
-            rows={8}
-          />
-          <ToolOutput
-            value={output}
-            label="CSV Output"
-            isEmpty={!output}
-            emptyMessage="CSV output will appear here..."
-          />
-        </div>
-        {error && (
-          <div className="p-4 bg-red-500/10 border border-red-500/50 rounded-lg text-red-400">
-            Error: {error}
-          </div>
-        )}
-        <Button onClick={handleConvert} className="gradient-btn text-white border-0">
-          Convert
-        </Button>
-      </div>
-    </ToolLayout>
-  )
-}
-
-function CsvToJsonTool() {
-  const [input, setInput] = useState('')
-  const [output, setOutput] = useState('')
-  const [error, setError] = useState('')
-
-  const handleConvert = () => {
-    try {
-      setError('')
-      const lines = input.trim().split('\n')
-      if (lines.length < 2) throw new Error('CSV must have header and data rows')
-      const headers = lines[0].split(',').map(h => h.trim())
-      const data = lines.slice(1).map(line => {
-        const values = line.split(',').map(v => v.trim())
-        return headers.reduce((obj, header, idx) => {
-          obj[header] = values[idx] || ''
-          return obj
-        }, {} as Record<string, string>)
-      })
-      setOutput(JSON.stringify(data, null, 2))
-    } catch (e) {
-      setError(String(e))
-    }
-  }
-
-  return (
-    <ToolLayout
-      title="CSV to JSON Converter"
-      description="Convert CSV spreadsheet data to JSON format"
-      explanation={
-        <div className="space-y-4 text-gray-300">
-          <p>
-            Transform comma-separated values from spreadsheets into structured JSON data for APIs
-            and applications.
-          </p>
-        </div>
-      }
-    >
-      <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <ToolInput
-            value={input}
-            onChange={setInput}
-            placeholder="Paste your CSV data..."
-            label="CSV Input"
-            rows={8}
-          />
-          <ToolOutput
-            value={output}
-            label="JSON Output"
-            isEmpty={!output}
-            emptyMessage="JSON output will appear here..."
-          />
-        </div>
-        {error && (
-          <div className="p-4 bg-red-500/10 border border-red-500/50 rounded-lg text-red-400">
-            Error: {error}
-          </div>
-        )}
-        <Button onClick={handleConvert} className="gradient-btn text-white border-0">
-          Convert
-        </Button>
-      </div>
-    </ToolLayout>
-  )
-}
-
-function JwtDecoderTool() {
-  const [input, setInput] = useState('')
-  const [output, setOutput] = useState('')
-  const [error, setError] = useState('')
-
-  const handleDecode = () => {
-    try {
-      setError('')
-      const parts = input.trim().split('.')
-      if (parts.length !== 3) throw new Error('Invalid JWT format')
-      const decoded = parts.map(part => {
-        const padded = part + '='.repeat((4 - (part.length % 4)) % 4)
-        return JSON.stringify(JSON.parse(atob(padded)), null, 2)
-      })
-      setOutput(decoded.join('\n---\n'))
-    } catch (e) {
-      setError(String(e))
-    }
-  }
-
-  return (
-    <ToolLayout
-      title="JWT Decoder"
-      description="Decode and inspect JWT tokens"
-      explanation={
-        <div className="space-y-4 text-gray-300">
-          <p>
-            Decode JWT (JSON Web Tokens) to inspect header, payload, and signature components
-            without verification.
-          </p>
-        </div>
-      }
-    >
-      <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <ToolInput
-            value={input}
-            onChange={setInput}
-            placeholder="Paste your JWT token..."
-            label="JWT Token"
-            rows={4}
-          />
-          <ToolOutput
-            value={output}
-            label="Decoded Output"
-            isEmpty={!output}
-            emptyMessage="Decoded JWT will appear here..."
-          />
-        </div>
-        {error && (
-          <div className="p-4 bg-red-500/10 border border-red-500/50 rounded-lg text-red-400">
-            Error: {error}
-          </div>
-        )}
-        <Button onClick={handleDecode} className="gradient-btn text-white border-0">
-          Decode
-        </Button>
-      </div>
-    </ToolLayout>
-  )
-}
-
-function UuidGeneratorTool() {
-  const [output, setOutput] = useState('')
-
-  const handleGenerate = () => {
-    const uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-      const r = (Math.random() * 16) | 0
-      const v = c === 'x' ? r : (r & 0x3) | 0x8
-      return v.toString(16)
-    })
-    setOutput(uuid)
-  }
-
-  return (
-    <ToolLayout
-      title="UUID Generator"
-      description="Generate UUID/GUID identifiers"
-      explanation={
-        <div className="space-y-4 text-gray-300">
-          <p>Generate universally unique identifiers (UUIDs) for applications and databases.</p>
-        </div>
-      }
-    >
-      <div className="space-y-6">
-        <ToolOutput value={output} label="Generated UUID" isEmpty={!output} />
-        <Button onClick={handleGenerate} className="gradient-btn text-white border-0">
-          Generate UUID
-        </Button>
-      </div>
-    </ToolLayout>
-  )
-}
-
-function LoremIpsumGeneratorTool() {
-  const [count, setCount] = useState(5)
-  const [output, setOutput] = useState('')
-
-  const lorem =
-    'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.'
-
-  const handleGenerate = () => {
-    const sentences = []
-    for (let i = 0; i < count; i++) {
-      sentences.push(lorem)
-    }
-    setOutput(sentences.join(' '))
-  }
-
-  return (
-    <ToolLayout
-      title="Lorem Ipsum Generator"
-      description="Generate placeholder Lorem Ipsum text"
-      explanation={
-        <div className="space-y-4 text-gray-300">
-          <p>Generate dummy Lorem Ipsum text for design mockups and content placeholders.</p>
-        </div>
-      }
-    >
-      <div className="space-y-6">
-        <div className="flex gap-2">
-          <input
-            type="number"
-            min="1"
-            value={count}
-            onChange={e => setCount(parseInt(e.target.value) || 1)}
-            placeholder="Number of sentences"
-            className="flex-1 px-3 py-2 bg-secondary border border-border rounded-md"
-          />
-          <Button onClick={handleGenerate} className="gradient-btn text-white border-0">
-            Generate
-          </Button>
-        </div>
-        <ToolOutput value={output} label="Generated Text" isEmpty={!output} />
-      </div>
-    </ToolLayout>
-  )
-}
-
-function TextToSlugTool() {
-  const [input, setInput] = useState('')
-  const [output, setOutput] = useState('')
-
-  const handleConvert = () => {
-    const slug = input
-      .toLowerCase()
-      .trim()
-      .replace(/[^\w\s-]/g, '')
-      .replace(/[\s_]+/g, '-')
-      .replace(/^-+|-+$/g, '')
-    setOutput(slug)
-  }
-
-  return (
-    <ToolLayout
-      title="Text to Slug Converter"
-      description="Convert text to URL-friendly slugs"
-      explanation={
-        <div className="space-y-4 text-gray-300">
-          <p>Transform any text into URL-safe slugs for blog posts, product pages, and links.</p>
-        </div>
-      }
-    >
-      <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <ToolInput
-            value={input}
-            onChange={setInput}
-            placeholder="Enter text to convert..."
-            label="Input Text"
-          />
-          <ToolOutput value={output} label="URL Slug" isEmpty={!output} />
-        </div>
-        <Button onClick={handleConvert} className="gradient-btn text-white border-0">
-          Convert to Slug
-        </Button>
-      </div>
-    </ToolLayout>
-  )
-}
-
-// Placeholder tools for remaining developer tools
-function CronGeneratorTool() {
-  return <PlaceholderToolGeneric title="Cron Generator" description="Generate cron expressions" />
-}
-
-function HttpHeaderParserTool() {
-  return (
-    <PlaceholderToolGeneric title="HTTP Header Parser" description="Parse HTTP headers" />
-  )
-}
-
-function UserAgentParserTool() {
-  return <PlaceholderToolGeneric title="User Agent Parser" description="Parse user agent strings" />
-}
-
-function ColorConverterTool() {
-  return <PlaceholderToolGeneric title="Color Converter" description="Convert color formats" />
-}
-
-function CodeMinifierTool() {
-  return <PlaceholderToolGeneric title="Code Minifier" description="Minify code" />
-}
-
-function CodeBeautifierTool() {
-  return <PlaceholderToolGeneric title="Code Beautifier" description="Beautify code" />
-}
-
-function HashGeneratorTool() {
-  return <PlaceholderToolGeneric title="Hash Generator" description="Generate hashes" />
-}
-
-function RandomStringGeneratorTool() {
-  return <PlaceholderToolGeneric title="Random String Generator" description="Generate random strings" />
-}
-
-// ===== TEXT TOOLS =====
-
-function SentenceCounterTool() {
-  return <PlaceholderToolGeneric title="Sentence Counter" description="Count sentences" />
-}
-
-function ParagraphCounterTool() {
-  return <PlaceholderToolGeneric title="Paragraph Counter" description="Count paragraphs" />
-}
-
-function QuoteFinderTool() {
-  return <PlaceholderToolGeneric title="Quote Finder" description="Find quotes in text" />
-}
-
-function RhymeCheckerTool() {
-  return <PlaceholderToolGeneric title="Rhyme Checker" description="Find rhyming words" />
-}
-
-function PlagiarismCheckerTool() {
-  return <PlaceholderToolGeneric title="Plagiarism Checker" description="Check for plagiarism" />
-}
-
-function MarkdownPreviewTool() {
-  return <PlaceholderToolGeneric title="Markdown Preview" description="Preview markdown" />
-}
-
-function MarkdownToHtmlTool() {
-  return <PlaceholderToolGeneric title="Markdown to HTML" description="Convert markdown to HTML" />
-}
-
-function YamlParserTool() {
-  return <PlaceholderToolGeneric title="YAML Parser" description="Parse YAML data" />
-}
-
-function XmlFormatterTool() {
-  return <PlaceholderToolGeneric title="XML Formatter" description="Format XML" />
-}
-
-function TomlParserTool() {
-  return <PlaceholderToolGeneric title="TOML Parser" description="Parse TOML data" />
-}
-
-function SlugGeneratorTool() {
-  return <PlaceholderToolGeneric title="Slug Generator" description="Generate URL slugs" />
-}
-
-function PhoneticAlphabetTool() {
-  return <PlaceholderToolGeneric title="Phonetic Alphabet" description="NATO phonetic alphabet" />
-}
-
-function RegexBuilderTool() {
-  return <PlaceholderToolGeneric title="Regex Builder" description="Build regular expressions" />
-}
-
-function MorseCodeConverterTool() {
-  return <PlaceholderToolGeneric title="Morse Code Converter" description="Convert to morse code" />
-}
-
-function BinaryTextConverterTool() {
-  return <PlaceholderToolGeneric title="Binary Text Converter" description="Convert to binary" />
-}
-
-function CamelCaseConverterTool() {
-  return <PlaceholderToolGeneric title="CamelCase Converter" description="Convert to camelCase" />
-}
-
-function KebabCaseConverterTool() {
-  return <PlaceholderToolGeneric title="Kebab-Case Converter" description="Convert to kebab-case" />
-}
-
-function SnakeCaseConverterTool() {
-  return <PlaceholderToolGeneric title="Snake_Case Converter" description="Convert to snake_case" />
-}
-
-function TitleCaseConverterTool() {
-  return <PlaceholderToolGeneric title="Title Case Converter" description="Convert to Title Case" />
-}
-
-function PalindromeCheckerTool() {
-  return <PlaceholderToolGeneric title="Palindrome Checker" description="Check palindromes" />
-}
-
-function AnagramFinderTool() {
-  return <PlaceholderToolGeneric title="Anagram Finder" description="Find anagrams" />
-}
-
-function WordFrequencyCounterTool() {
-  return <PlaceholderToolGeneric title="Word Frequency Counter" description="Count word frequency" />
-}
-
-function ReadingTimeCalculatorTool() {
-  return <PlaceholderToolGeneric title="Reading Time Calculator" description="Calculate reading time" />
-}
-
-function PasswordStrengthCheckerTool() {
-  return <PlaceholderToolGeneric title="Password Strength Checker" description="Check password strength" />
-}
-
-// ===== IMAGE/MULTIMEDIA TOOLS =====
-
-function QrCodeGeneratorTool() {
-  return <PlaceholderToolGeneric title="QR Code Generator" description="Generate QR codes" />
-}
-
-function BarcodeGeneratorTool() {
-  return <PlaceholderToolGeneric title="Barcode Generator" description="Generate barcodes" />
-}
-
-function ColorPaletteGeneratorTool() {
-  return <PlaceholderToolGeneric title="Color Palette Generator" description="Generate color palettes" />
-}
-
-function GradientGeneratorTool() {
-  return <PlaceholderToolGeneric title="Gradient Generator" description="Generate CSS gradients" />
-}
-
-function EmojiPickerTool() {
-  return <PlaceholderToolGeneric title="Emoji Picker" description="Pick emojis" />
-}
-
-function FontPreviewTool() {
-  return <PlaceholderToolGeneric title="Font Preview" description="Preview fonts" />
-}
-
-function CssFilterGeneratorTool() {
-  return <PlaceholderToolGeneric title="CSS Filter Generator" description="Generate CSS filters" />
-}
-
-function SvgCompressorTool() {
-  return <PlaceholderToolGeneric title="SVG Compressor" description="Compress SVG files" />
-}
-
-function ImageWatermarkTool() {
-  return <PlaceholderToolGeneric title="Image Watermark" description="Add watermarks to images" />
-}
-
-function ImageMetadataReaderTool() {
-  return <PlaceholderToolGeneric title="Image Metadata Reader" description="Read image metadata" />
-}
-
-function ImageToAsciiArtTool() {
-  return <PlaceholderToolGeneric title="Image to ASCII Art" description="Convert to ASCII art" />
-}
-
-function SpriteSheetGeneratorTool() {
-  return <PlaceholderToolGeneric title="Sprite Sheet Generator" description="Generate sprite sheets" />
-}
-
-function AnimatedGifMakerTool() {
-  return <PlaceholderToolGeneric title="Animated GIF Maker" description="Create animated GIFs" />
-}
-
-function ExifDataExtractorTool() {
-  return <PlaceholderToolGeneric title="EXIF Data Extractor" description="Extract EXIF data" />
-}
-
-// ===== CALCULATOR TOOLS =====
-
-function BmiCalculatorTool() {
-  return <PlaceholderToolGeneric title="BMI Calculator" description="Calculate BMI" />
-}
-
-function BmrCalculatorTool() {
-  return <PlaceholderToolGeneric title="BMR Calculator" description="Calculate BMR" />
-}
-
-function CalorieCalculatorTool() {
-  return <PlaceholderToolGeneric title="Calorie Calculator" description="Calculate calories" />
-}
-
-function CompoundInterestCalculatorTool() {
-  return <PlaceholderToolGeneric title="Compound Interest Calculator" description="Calculate compound interest" />
-}
-
-function SimpleInterestCalculatorTool() {
-  return <PlaceholderToolGeneric title="Simple Interest Calculator" description="Calculate simple interest" />
-}
-
-function GstCalculatorTool() {
-  return <PlaceholderToolGeneric title="GST Calculator" description="Calculate GST" />
-}
-
-function SalesTaxCalculatorTool() {
-  return <PlaceholderToolGeneric title="Sales Tax Calculator" description="Calculate sales tax" />
-}
-
-function TipCalculatorTool() {
-  return <PlaceholderToolGeneric title="Tip Calculator" description="Calculate tip" />
-}
-
-function ProfitMarginCalculatorTool() {
-  return <PlaceholderToolGeneric title="Profit Margin Calculator" description="Calculate profit margin" />
-}
-
-function MarkupCalculatorTool() {
-  return <PlaceholderToolGeneric title="Markup Calculator" description="Calculate markup" />
-}
-
-function BreakEvenCalculatorTool() {
-  return <PlaceholderToolGeneric title="Break Even Calculator" description="Calculate break even" />
-}
-
-function UnitPriceCalculatorTool() {
-  return <PlaceholderToolGeneric title="Unit Price Calculator" description="Calculate unit price" />
-}
-
-function AverageCalculatorTool() {
-  return <PlaceholderToolGeneric title="Average Calculator" description="Calculate average" />
-}
-
-function GradeCalculatorTool() {
-  return <PlaceholderToolGeneric title="Grade Calculator" description="Calculate grade" />
-}
-
-function TimeDurationCalculatorTool() {
-  return <PlaceholderToolGeneric title="Time Duration Calculator" description="Calculate duration" />
-}
-
-function SpeedDistanceTimeCalculatorTool() {
-  return <PlaceholderToolGeneric title="Speed Distance Time Calculator" description="Calculate speed/distance/time" />
-}
-
-function DaysBetweenCalculatorTool() {
-  return <PlaceholderToolGeneric title="Days Between Calculator" description="Calculate days between" />
-}
-
-function OvulationCalculatorTool() {
-  return <PlaceholderToolGeneric title="Ovulation Calculator" description="Calculate ovulation" />
-}
-
-function PregnancyCalculatorTool() {
-  return <PlaceholderToolGeneric title="Pregnancy Calculator" description="Calculate pregnancy" />
-}
-
-function RetirementCalculatorTool() {
-  return <PlaceholderToolGeneric title="Retirement Calculator" description="Calculate retirement" />
-}
-
-function InflationCalculatorTool() {
-  return <PlaceholderToolGeneric title="Inflation Calculator" description="Calculate inflation" />
-}
-
-function SalaryCalculatorTool() {
-  return <PlaceholderToolGeneric title="Salary Calculator" description="Calculate salary" />
-}
-
-function ElectricityCalculatorTool() {
-  return <PlaceholderToolGeneric title="Electricity Calculator" description="Calculate electricity" />
-}
-
-function FuelConsumptionCalculatorTool() {
-  return <PlaceholderToolGeneric title="Fuel Consumption Calculator" description="Calculate fuel consumption" />
-}
-
-function MortgageCalculatorTool() {
-  return <PlaceholderToolGeneric title="Mortgage Calculator" description="Calculate mortgage" />
-}
-
-function InvestmentCalculatorTool() {
-  return <PlaceholderToolGeneric title="Investment Calculator" description="Calculate investment" />
-}
-
-function SavingsGoalCalculatorTool() {
-  return <PlaceholderToolGeneric title="Savings Goal Calculator" description="Calculate savings goal" />
-}
-
-function BodyFatCalculatorTool() {
-  return <PlaceholderToolGeneric title="Body Fat Calculator" description="Calculate body fat" />
-}
-
-function IdealWeightCalculatorTool() {
-  return <PlaceholderToolGeneric title="Ideal Weight Calculator" description="Calculate ideal weight" />
-}
-
-function WaterIntakeCalculatorTool() {
-  return <PlaceholderToolGeneric title="Water Intake Calculator" description="Calculate water intake" />
-}
-
-function AgeInSecondsCalculatorTool() {
-  return <PlaceholderToolGeneric title="Age in Seconds Calculator" description="Calculate age in seconds" />
-}
-
-function TimezoneConverterTool() {
-  return <PlaceholderToolGeneric title="Timezone Converter" description="Convert timezones" />
-}
-
-function CountdownTimerTool() {
-  return <PlaceholderToolGeneric title="Countdown Timer" description="Countdown timer" />
-}
-
-function UnitConverterTool() {
-  return <PlaceholderToolGeneric title="Unit Converter" description="Convert units" />
-}
-
-function TemperatureConverterTool() {
-  return <PlaceholderToolGeneric title="Temperature Converter" description="Convert temperature" />
-}
-
-function VolumeConverterTool() {
-  return <PlaceholderToolGeneric title="Volume Converter" description="Convert volume" />
-}
-
-function WeightConverterTool() {
-  return <PlaceholderToolGeneric title="Weight Converter" description="Convert weight" />
-}
-
-function LengthConverterTool() {
-  return <PlaceholderToolGeneric title="Length Converter" description="Convert length" />
-}
-
-function AreaConverterTool() {
-  return <PlaceholderToolGeneric title="Area Converter" description="Convert area" />
-}
-
-function LoanCalculatorTool() {
-  return <PlaceholderToolGeneric title="Loan Calculator" description="Calculate loan" />
-}
-
-// Main render function
 export default function ToolContent({ tool }: ToolContentProps) {
-  switch (tool.slug) {
-    // Developer Tools
-    case 'json-to-csv':
-      return <JsonToCsvTool />
-    case 'csv-to-json':
-      return <CsvToJsonTool />
-    case 'jwt-decoder':
-      return <JwtDecoderTool />
-    case 'cron-generator':
-      return <CronGeneratorTool />
-    case 'http-header-parser':
-      return <HttpHeaderParserTool />
-    case 'user-agent-parser':
-      return <UserAgentParserTool />
-    case 'color-converter':
-      return <ColorConverterTool />
-    case 'code-minifier':
-      return <CodeMinifierTool />
-    case 'code-beautifier':
-      return <CodeBeautifierTool />
-    case 'uuid-generator':
-      return <UuidGeneratorTool />
-    case 'hash-generator':
-      return <HashGeneratorTool />
-    case 'random-string-generator':
-      return <RandomStringGeneratorTool />
-    case 'lorem-ipsum-generator':
-      return <LoremIpsumGeneratorTool />
-    case 'text-to-slug':
-      return <TextToSlugTool />
+  const [input, setInput] = useState('')
+  const [secondInput, setSecondInput] = useState('')
+  const [thirdInput, setThirdInput] = useState('')
+  const [output, setOutput] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [copied, setCopied] = useState(false)
 
-    // Text Tools
-    case 'sentence-counter':
-      return <SentenceCounterTool />
-    case 'paragraph-counter':
-      return <ParagraphCounterTool />
-    case 'quote-finder':
-      return <QuoteFinderTool />
-    case 'rhyme-checker':
-      return <RhymeCheckerTool />
-    case 'plagiarism-checker':
-      return <PlagiarismCheckerTool />
-    case 'markdown-preview':
-      return <MarkdownPreviewTool />
-    case 'markdown-to-html':
-      return <MarkdownToHtmlTool />
-    case 'yaml-parser':
-      return <YamlParserTool />
-    case 'xml-formatter':
-      return <XmlFormatterTool />
-    case 'toml-parser':
-      return <TomlParserTool />
-    case 'slug-generator':
-      return <SlugGeneratorTool />
-    case 'phonetic-alphabet':
-      return <PhoneticAlphabetTool />
-    case 'regex-builder':
-      return <RegexBuilderTool />
-    case 'morse-code-converter':
-      return <MorseCodeConverterTool />
-    case 'binary-text-converter':
-      return <BinaryTextConverterTool />
-    case 'camelcase-converter':
-      return <CamelCaseConverterTool />
-    case 'kebabcase-converter':
-      return <KebabCaseConverterTool />
-    case 'snakecase-converter':
-      return <SnakeCaseConverterTool />
-    case 'titlecase-converter':
-      return <TitleCaseConverterTool />
-    case 'palindrome-checker':
-      return <PalindromeCheckerTool />
-    case 'anagram-finder':
-      return <AnagramFinderTool />
-    case 'word-frequency-counter':
-      return <WordFrequencyCounterTool />
-    case 'reading-time-calculator':
-      return <ReadingTimeCalculatorTool />
-    case 'password-strength-checker':
-      return <PasswordStrengthCheckerTool />
+  const processInput = async () => {
+    setLoading(true)
+    setError('')
+    setCopied(false)
 
-    // Image/Multimedia Tools
-    case 'qr-code-generator':
-      return <QrCodeGeneratorTool />
-    case 'barcode-generator':
-      return <BarcodeGeneratorTool />
-    case 'color-palette-generator':
-      return <ColorPaletteGeneratorTool />
-    case 'gradient-generator':
-      return <GradientGeneratorTool />
-    case 'emoji-picker':
-      return <EmojiPickerTool />
-    case 'font-preview':
-      return <FontPreviewTool />
-    case 'css-filter-generator':
-      return <CssFilterGeneratorTool />
-    case 'svg-compressor':
-      return <SvgCompressorTool />
-    case 'image-watermark':
-      return <ImageWatermarkTool />
-    case 'image-metadata-reader':
-      return <ImageMetadataReaderTool />
-    case 'image-to-ascii-art':
-      return <ImageToAsciiArtTool />
-    case 'sprite-sheet-generator':
-      return <SpriteSheetGeneratorTool />
-    case 'animated-gif-maker':
-      return <AnimatedGifMakerTool />
-    case 'exif-data-extractor':
-      return <ExifDataExtractorTool />
+    try {
+      let result = ''
 
-    // Calculator Tools
-    case 'bmi-calculator':
-      return <BmiCalculatorTool />
-    case 'bmr-calculator':
-      return <BmrCalculatorTool />
-    case 'calorie-calculator':
-      return <CalorieCalculatorTool />
-    case 'compound-interest-calculator':
-      return <CompoundInterestCalculatorTool />
-    case 'simple-interest-calculator':
-      return <SimpleInterestCalculatorTool />
-    case 'gst-calculator':
-      return <GstCalculatorTool />
-    case 'sales-tax-calculator':
-      return <SalesTaxCalculatorTool />
-    case 'tip-calculator':
-      return <TipCalculatorTool />
-    case 'profit-margin-calculator':
-      return <ProfitMarginCalculatorTool />
-    case 'markup-calculator':
-      return <MarkupCalculatorTool />
-    case 'break-even-calculator':
-      return <BreakEvenCalculatorTool />
-    case 'unit-price-calculator':
-      return <UnitPriceCalculatorTool />
-    case 'average-calculator':
-      return <AverageCalculatorTool />
-    case 'grade-calculator':
-      return <GradeCalculatorTool />
-    case 'time-duration-calculator':
-      return <TimeDurationCalculatorTool />
-    case 'speed-distance-time-calculator':
-      return <SpeedDistanceTimeCalculatorTool />
-    case 'days-between-calculator':
-      return <DaysBetweenCalculatorTool />
-    case 'ovulation-calculator':
-      return <OvulationCalculatorTool />
-    case 'pregnancy-calculator':
-      return <PregnancyCalculatorTool />
-    case 'retirement-calculator':
-      return <RetirementCalculatorTool />
-    case 'inflation-calculator':
-      return <InflationCalculatorTool />
-    case 'salary-calculator':
-      return <SalaryCalculatorTool />
-    case 'electricity-calculator':
-      return <ElectricityCalculatorTool />
-    case 'fuel-consumption-calculator':
-      return <FuelConsumptionCalculatorTool />
-    case 'mortgage-calculator':
-      return <MortgageCalculatorTool />
-    case 'investment-calculator':
-      return <InvestmentCalculatorTool />
-    case 'savings-goal-calculator':
-      return <SavingsGoalCalculatorTool />
-    case 'body-fat-calculator':
-      return <BodyFatCalculatorTool />
-    case 'ideal-weight-calculator':
-      return <IdealWeightCalculatorTool />
-    case 'water-intake-calculator':
-      return <WaterIntakeCalculatorTool />
-    case 'age-in-seconds-calculator':
-      return <AgeInSecondsCalculatorTool />
-    case 'timezone-converter':
-      return <TimezoneConverterTool />
-    case 'countdown-timer':
-      return <CountdownTimerTool />
-    case 'unit-converter':
-      return <UnitConverterTool />
-    case 'temperature-converter':
-      return <TemperatureConverterTool />
-    case 'volume-converter':
-      return <VolumeConverterTool />
-    case 'weight-converter':
-      return <WeightConverterTool />
-    case 'length-converter':
-      return <LengthConverterTool />
-    case 'area-converter':
-      return <AreaConverterTool />
-    case 'loan-calculator':
-      return <LoanCalculatorTool />
+      // CALCULATOR TOOLS - Health
+      if (tool.slug === 'bmi-calculator') {
+        const weight = parseFloat(input)
+        const height = parseFloat(secondInput)
+        if (!weight || !height) throw new Error('Please enter valid weight and height')
+        const calc = healthCalculations.bmi(weight, height)
+        result = `BMI: ${calc.bmi}\nCategory: ${calc.category}`
+      }
+      else if (tool.slug === 'bmr-calculator') {
+        const weight = parseFloat(input)
+        const height = parseFloat(secondInput)
+        const age = parseInt(thirdInput)
+        if (!weight || !height || !age) throw new Error('Please fill all fields')
+        const bmr = healthCalculations.bmr(weight, height, age, 'male')
+        result = `BMR: ${bmr} kcal/day\nDaily Calorie Needs (Moderate): ${(parseInt(bmr) * 1.55).toFixed(0)} kcal`
+      }
+      else if (tool.slug === 'calorie-calculator') {
+        const bmr = parseFloat(input)
+        if (!bmr) throw new Error('Please enter BMR value')
+        result = `Sedentary: ${(bmr * 1.2).toFixed(0)} kcal\nLight: ${(bmr * 1.375).toFixed(0)} kcal\nModerate: ${(bmr * 1.55).toFixed(0)} kcal\nVery Active: ${(bmr * 1.725).toFixed(0)} kcal\nExtreme: ${(bmr * 1.9).toFixed(0)} kcal`
+      }
+      else if (tool.slug === 'body-fat-calculator') {
+        const weight = parseFloat(input)
+        const waist = parseFloat(secondInput)
+        const neck = parseFloat(thirdInput)
+        if (!weight || !waist || !neck) throw new Error('Please fill all fields')
+        const bf = healthCalculations.bodyFat(weight, waist, neck, 70, 'male')
+        result = `Body Fat: ${bf}%`
+      }
+      else if (tool.slug === 'ideal-weight-calculator') {
+        const height = parseFloat(input)
+        if (!height) throw new Error('Please enter height in inches')
+        const calc = healthCalculations.idealWeight(height, 'male')
+        result = `Male Range: ${calc.min} - ${calc.max} lbs\nFemale Range: ${healthCalculations.idealWeight(height, 'female').min} - ${healthCalculations.idealWeight(height, 'female').max} lbs`
+      }
+      else if (tool.slug === 'water-intake-calculator') {
+        const weight = parseFloat(input)
+        if (!weight) throw new Error('Please enter weight in pounds')
+        const low = healthCalculations.waterIntake(weight, 'low')
+        const mod = healthCalculations.waterIntake(weight, 'moderate')
+        const high = healthCalculations.waterIntake(weight, 'high')
+        result = `Low Activity: ${low} liters/day\nModerate Activity: ${mod} liters/day\nHigh Activity: ${high} liters/day`
+      }
+      else if (tool.slug === 'pregnancy-calculator') {
+        const lastPeriod = new Date(input)
+        const dueDate = new Date(lastPeriod.getTime() + 280 * 24 * 60 * 60 * 1000)
+        const week = Math.floor((Date.now() - lastPeriod.getTime()) / (7 * 24 * 60 * 60 * 1000))
+        result = `Week: ${week}\nDue Date: ${dueDate.toLocaleDateString()}`
+      }
 
-    default:
-      return <PlaceholderTool tool={tool} />
+      // CALCULATOR TOOLS - Finance
+      else if (tool.slug === 'compound-interest-calculator') {
+        const principal = parseFloat(input)
+        const rate = parseFloat(secondInput)
+        const years = parseInt(thirdInput)
+        if (!principal || !rate || !years) throw new Error('Please fill all fields')
+        const calc = financeCalculations.compoundInterest(principal, rate, years)
+        result = `Principal: $${principal.toFixed(2)}\nInterest: $${calc.interest}\nTotal Amount: $${calc.total}`
+      }
+      else if (tool.slug === 'simple-interest-calculator') {
+        const principal = parseFloat(input)
+        const rate = parseFloat(secondInput)
+        const years = parseInt(thirdInput)
+        if (!principal || !rate || !years) throw new Error('Please fill all fields')
+        const calc = financeCalculations.simpleInterest(principal, rate, years)
+        result = `Principal: $${principal.toFixed(2)}\nInterest: $${calc.interest}\nTotal Amount: $${calc.total}`
+      }
+      else if (tool.slug === 'profit-margin-calculator') {
+        const revenue = parseFloat(input)
+        const cost = parseFloat(secondInput)
+        if (!revenue || !cost) throw new Error('Please enter revenue and cost')
+        const calc = financeCalculations.profitMargin(revenue, cost)
+        result = `Revenue: $${revenue.toFixed(2)}\nCost: $${cost.toFixed(2)}\nProfit: $${calc.profit}\nMargin: ${calc.margin}%`
+      }
+      else if (tool.slug === 'markup-calculator') {
+        const cost = parseFloat(input)
+        const sellPrice = parseFloat(secondInput)
+        if (!cost || !sellPrice) throw new Error('Please enter cost and selling price')
+        const markup = financeCalculations.markup(cost, sellPrice)
+        result = `Cost: $${cost.toFixed(2)}\nSelling Price: $${sellPrice.toFixed(2)}\nMarkup: ${markup}%`
+      }
+      else if (tool.slug === 'gst-calculator') {
+        const amount = parseFloat(input)
+        const rate = parseFloat(secondInput || '18')
+        if (!amount) throw new Error('Please enter amount')
+        const calc = financeCalculations.gstCalculation(amount, rate)
+        result = `Amount: $${amount.toFixed(2)}\nGST (${rate}%): $${calc.gst}\nTotal: $${calc.total}`
+      }
+      else if (tool.slug === 'sales-tax-calculator') {
+        const amount = parseFloat(input)
+        const taxRate = parseFloat(secondInput)
+        if (!amount || !taxRate) throw new Error('Please enter amount and tax rate')
+        const tax = (amount * taxRate) / 100
+        result = `Amount: $${amount.toFixed(2)}\nTax (${taxRate}%): $${tax.toFixed(2)}\nTotal: $${(amount + tax).toFixed(2)}`
+      }
+      else if (tool.slug === 'tip-calculator') {
+        const amount = parseFloat(input)
+        const percentage = parseFloat(secondInput)
+        if (!amount || !percentage) throw new Error('Please enter amount and tip percentage')
+        const calc = utilityCalculations.tip(amount, percentage)
+        result = `Bill: $${amount.toFixed(2)}\nTip (${percentage}%): $${calc.tip}\nTotal: $${calc.total}`
+      }
+      else if (tool.slug === 'break-even-calculator') {
+        const fixed = parseFloat(input)
+        const price = parseFloat(secondInput)
+        const cost = parseFloat(thirdInput)
+        if (!fixed || !price || !cost) throw new Error('Please fill all fields')
+        const calc = utilityCalculations.breakEven(fixed, price, cost)
+        result = `Break-Even Units: ${calc.units}\nBreak-Even Revenue: $${calc.amount}`
+      }
+      else if (tool.slug === 'mortgage-calculator') {
+        const principal = parseFloat(input)
+        const rate = parseFloat(secondInput)
+        const years = parseInt(thirdInput)
+        if (!principal || !rate || !years) throw new Error('Please fill all fields')
+        const calc = financeCalculations.mortgage(principal, rate, years)
+        result = `Monthly Payment: $${calc.monthlyPayment}\nTotal Payment: $${calc.totalPayment}\nTotal Interest: $${calc.totalInterest}`
+      }
+      else if (tool.slug === 'loan-calculator') {
+        const principal = parseFloat(input)
+        const rate = parseFloat(secondInput)
+        const months = parseInt(thirdInput)
+        if (!principal || !rate || !months) throw new Error('Please fill all fields')
+        const calc = financeCalculations.loan(principal, rate, months)
+        result = `Monthly Payment: $${calc.monthlyPayment}\nTotal Payment: $${calc.totalPayment}\nTotal Interest: $${calc.totalInterest}`
+      }
+
+      // CALCULATOR TOOLS - Conversions
+      else if (tool.slug === 'temperature-converter') {
+        const value = parseFloat(input)
+        if (!value) throw new Error('Please enter a value')
+        const fromC = conversionCalculations.temperature(value, 'C', 'F')
+        const fromF = conversionCalculations.temperature(value, 'F', 'C')
+        const fromK = conversionCalculations.temperature(value, 'K', 'C')
+        result = `${value}°C = ${fromC}°F\n${value}°F = ${fromF}°C\n${value}K = ${fromK}°C`
+      }
+      else if (tool.slug === 'weight-converter') {
+        const value = parseFloat(input)
+        if (!value) throw new Error('Please enter a value')
+        result = `${value} kg = ${conversionCalculations.weight(value, 'kg', 'lb')} lbs\n${value} lbs = ${conversionCalculations.weight(value, 'lb', 'kg')} kg\n${value} kg = ${conversionCalculations.weight(value, 'kg', 'g')} g`
+      }
+      else if (tool.slug === 'length-converter') {
+        const value = parseFloat(input)
+        if (!value) throw new Error('Please enter a value')
+        result = `${value} m = ${conversionCalculations.length(value, 'm', 'ft')} ft\n${value} ft = ${conversionCalculations.length(value, 'ft', 'm')} m\n${value} km = ${conversionCalculations.length(value, 'km', 'mi')} mi`
+      }
+      else if (tool.slug === 'volume-converter') {
+        const value = parseFloat(input)
+        if (!value) throw new Error('Please enter a value')
+        result = `${value} L = ${conversionCalculations.volume(value, 'L', 'gal')} gal\n${value} gal = ${conversionCalculations.volume(value, 'gal', 'L')} L\n${value} mL = ${conversionCalculations.volume(value, 'mL', 'fl_oz')} fl oz`
+      }
+      else if (tool.slug === 'unit-converter') {
+        result = `Use Temperature/Weight/Length/Volume/Area converters for specific unit conversions`
+      }
+
+      // TEXT TOOLS - Converters
+      else if (tool.slug === 'camelcase-converter') {
+        if (!input.trim()) throw new Error('Please enter text')
+        result = caseConverters.toCamelCase(input)
+      }
+      else if (tool.slug === 'kebabcase-converter') {
+        if (!input.trim()) throw new Error('Please enter text')
+        result = caseConverters.toKebabCase(input)
+      }
+      else if (tool.slug === 'snakecase-converter') {
+        if (!input.trim()) throw new Error('Please enter text')
+        result = caseConverters.toSnakeCase(input)
+      }
+      else if (tool.slug === 'titlecase-converter') {
+        if (!input.trim()) throw new Error('Please enter text')
+        result = caseConverters.toTitleCase(input)
+      }
+      else if (tool.slug === 'text-to-slug') {
+        if (!input.trim()) throw new Error('Please enter text')
+        result = textConverters.slugify(input)
+      }
+      else if (tool.slug === 'morse-code-converter') {
+        if (!input.trim()) throw new Error('Please enter text')
+        result = textConverters.toMorseCode(input)
+      }
+      else if (tool.slug === 'binary-text-converter') {
+        if (!input.trim()) throw new Error('Please enter text')
+        result = textConverters.toBinary(input)
+      }
+      else if (tool.slug === 'phonetic-alphabet') {
+        if (!input.trim()) throw new Error('Please enter text')
+        result = textConverters.toPhoneticAlphabet(input)
+      }
+
+      // TEXT TOOLS - Analyzers
+      else if (tool.slug === 'word-frequency-counter') {
+        if (!input.trim()) throw new Error('Please enter text')
+        result = `Words: ${textAnalyzers.wordCount(input)}\n${textAnalyzers.wordFrequency(input)}`
+      }
+      else if (tool.slug === 'sentence-counter') {
+        if (!input.trim()) throw new Error('Please enter text')
+        result = `Sentences: ${textAnalyzers.sentenceCount(input)}`
+      }
+      else if (tool.slug === 'paragraph-counter') {
+        if (!input.trim()) throw new Error('Please enter text')
+        result = `Paragraphs: ${textAnalyzers.paragraphCount(input)}`
+      }
+      else if (tool.slug === 'reading-time-calculator') {
+        if (!input.trim()) throw new Error('Please enter text')
+        const time = textAnalyzers.readingTime(input)
+        const words = textAnalyzers.wordCount(input)
+        result = `Words: ${words}\n${time}`
+      }
+
+      // TEXT TOOLS - Checkers
+      else if (tool.slug === 'palindrome-checker') {
+        if (!input.trim()) throw new Error('Please enter text')
+        const isPalin = textCheckers.isPalindrome(input)
+        result = isPalin ? '✓ Yes, this is a palindrome!' : '✗ No, this is not a palindrome.'
+      }
+      else if (tool.slug === 'password-strength-checker') {
+        if (!input.trim()) throw new Error('Please enter a password')
+        const strength = textCheckers.passwordStrength(input)
+        result = `Strength: ${strength.strength}\nScore: ${strength.score}/5\nLength: ${input.length} chars\nSuggestions: ${strength.suggestions.join(', ') || 'Password is strong!'}`
+      }
+
+      // DEVELOPER TOOLS
+      else if (tool.slug === 'json-to-csv') {
+        if (!input.trim()) throw new Error('Please enter JSON')
+        result = dataConverters.jsonToCsv(input)
+      }
+      else if (tool.slug === 'csv-to-json') {
+        if (!input.trim()) throw new Error('Please enter CSV')
+        result = dataConverters.csvToJson(input)
+      }
+      else if (tool.slug === 'uuid-generator') {
+        const count = parseInt(input) || 1
+        const uuids = Array.from({ length: count }, () => formatGenerators.generateUUID()).join('\n')
+        result = uuids
+      }
+      else if (tool.slug === 'random-string-generator') {
+        const length = parseInt(input) || 16
+        result = formatGenerators.generateRandomString(length)
+      }
+      else if (tool.slug === 'lorem-ipsum-generator') {
+        const paragraphs = parseInt(input) || 3
+        result = formatGenerators.generateLoremIpsum(Math.min(paragraphs, 10))
+      }
+      else if (tool.slug === 'color-converter') {
+        if (!input.trim()) throw new Error('Please enter a color (HEX or RGB)')
+        if (input.startsWith('#')) {
+          try {
+            const rgb = colorConverters.hexToRgb(input)
+            const hsl = colorConverters.hexToHsl(input)
+            result = `HEX: ${input}\nRGB: ${rgb}\nHSL: ${hsl}`
+          } catch (e) {
+            throw new Error('Invalid HEX color format')
+          }
+        } else {
+          try {
+            const hex = colorConverters.rgbToHex(input)
+            result = `RGB: ${input}\nHEX: ${hex}`
+          } catch (e) {
+            throw new Error('Invalid RGB color format')
+          }
+        }
+      }
+      else if (tool.slug === 'hash-generator') {
+        if (!input.trim()) throw new Error('Please enter text to hash')
+        const md5 = hashGenerators.md5(input)
+        const sha1 = hashGenerators.sha1(input)
+        const sha256 = hashGenerators.sha256(input)
+        result = `MD5: ${md5}\nSHA1: ${sha1}\nSHA256: ${sha256}`
+      }
+      else if (tool.slug === 'jwt-decoder') {
+        if (!input.trim()) throw new Error('Please enter a JWT token')
+        const decoded = jwtDecoder(input)
+        if (decoded.valid) {
+          result = `Header:\n${decoded.header}\n\nPayload:\n${decoded.payload}\n\nSignature:\n${decoded.signature}`
+        } else {
+          throw new Error(decoded.error || 'Invalid JWT format')
+        }
+      }
+
+      else {
+        // Coming Soon for unimplemented tools
+        result = `${tool.name} is coming soon! We're implementing this tool to give you the best experience.`
+      }
+
+      setOutput(result)
+    } catch (err) {
+      setError(String(err))
+      setOutput('')
+    } finally {
+      setLoading(false)
+    }
   }
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(output)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  const handleDownload = () => {
+    const element = document.createElement('a')
+    const file = new Blob([output], { type: 'text/plain' })
+    element.href = URL.createObjectURL(file)
+    element.download = `${tool.slug}-output.txt`
+    document.body.appendChild(element)
+    element.click()
+    document.body.removeChild(element)
+  }
+
+  // Determine inputs needed based on tool
+  const getInputFields = () => {
+    const multiInputTools: Record<string, { labels: string[]; placeholders: string[] }> = {
+      'bmi-calculator': { labels: ['Weight (kg)', 'Height (cm)'], placeholders: ['70', '170'] },
+      'bmr-calculator': { labels: ['Weight (kg)', 'Height (cm)', 'Age'], placeholders: ['70', '170', '30'] },
+      'profit-margin-calculator': { labels: ['Revenue ($)', 'Cost ($)'], placeholders: ['1000', '600'] },
+      'markup-calculator': { labels: ['Cost ($)', 'Selling Price ($)'], placeholders: ['100', '150'] },
+      'tip-calculator': { labels: ['Bill Amount ($)', 'Tip Percentage (%)'], placeholders: ['100', '15'] },
+      'gst-calculator': { labels: ['Amount ($)', 'GST Rate (%)'], placeholders: ['1000', '18'] },
+      'sales-tax-calculator': { labels: ['Amount ($)', 'Tax Rate (%)'], placeholders: ['100', '8'] },
+      'compound-interest-calculator': { labels: ['Principal ($)', 'Rate (%)', 'Years'], placeholders: ['1000', '5', '10'] },
+      'simple-interest-calculator': { labels: ['Principal ($)', 'Rate (%)', 'Years'], placeholders: ['1000', '5', '10'] },
+      'break-even-calculator': { labels: ['Fixed Costs ($)', 'Price per Unit ($)', 'Cost per Unit ($)'], placeholders: ['5000', '50', '20'] },
+      'mortgage-calculator': { labels: ['Loan Amount ($)', 'Annual Rate (%)', 'Years'], placeholders: ['300000', '5', '30'] },
+      'loan-calculator': { labels: ['Loan Amount ($)', 'Annual Rate (%)', 'Months'], placeholders: ['10000', '5', '60'] },
+      'body-fat-calculator': { labels: ['Weight (lb)', 'Waist (in)', 'Neck (in)'], placeholders: ['200', '36', '16'] },
+      'ideal-weight-calculator': { labels: ['Height (in)'], placeholders: ['70'] },
+      'water-intake-calculator': { labels: ['Weight (lb)'], placeholders: ['180'] },
+    }
+
+    const tool_config = multiInputTools[tool.slug]
+    if (!tool_config) {
+      return (
+        <ToolInput
+          value={input}
+          onChange={setInput}
+          placeholder="Enter your input here..."
+          label="Input"
+          type="textarea"
+        />
+      )
+    }
+
+    return (
+      <div className="space-y-4">
+        <ToolInput
+          value={input}
+          onChange={setInput}
+          placeholder={tool_config.placeholders[0]}
+          label={tool_config.labels[0]}
+          type="text"
+        />
+        {tool_config.labels[1] && (
+          <ToolInput
+            value={secondInput}
+            onChange={setSecondInput}
+            placeholder={tool_config.placeholders[1]}
+            label={tool_config.labels[1]}
+            type="text"
+          />
+        )}
+        {tool_config.labels[2] && (
+          <ToolInput
+            value={thirdInput}
+            onChange={setThirdInput}
+            placeholder={tool_config.placeholders[2]}
+            label={tool_config.labels[2]}
+            type="text"
+          />
+        )}
+      </div>
+    )
+  }
+
+  return (
+    <ToolLayout
+      title={tool.name}
+      description={tool.description}
+      onCopy={output ? handleCopy : undefined}
+      onDownload={output ? handleDownload : undefined}
+      copiedText={copied}
+    >
+      <div className="space-y-6">
+        <div className="grid md:grid-cols-2 gap-6">
+          <div>{getInputFields()}</div>
+          <div>
+            <ToolOutput
+              value={output}
+              label="Output"
+              isEmpty={!output && !loading}
+              emptyMessage="Output will appear here..."
+            />
+          </div>
+        </div>
+
+        {error && (
+          <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-lg flex gap-3">
+            <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-red-400">{error}</p>
+          </div>
+        )}
+
+        <Button
+          onClick={processInput}
+          disabled={loading || (!input.trim() && !secondInput.trim())}
+          className="w-full"
+          size="lg"
+        >
+          {loading ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Processing...
+            </>
+          ) : (
+            'Convert / Process'
+          )}
+        </Button>
+      </div>
+    </ToolLayout>
+  )
 }
