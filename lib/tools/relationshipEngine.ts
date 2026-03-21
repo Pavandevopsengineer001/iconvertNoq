@@ -255,3 +255,10 @@ export function searchRelatedItems(query: string, limit: number = 6): RelatedIte
 
   return results.slice(0, limit)
 }
+
+/**
+ * Get related tool slugs for a specific tool
+ */
+export function getRelatedTools(toolSlug: string): string[] {
+  return toolRelationships[toolSlug] || []
+}

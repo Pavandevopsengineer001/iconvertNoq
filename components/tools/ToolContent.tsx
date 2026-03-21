@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { ToolLayout } from '@/components/tools/ToolLayout'
 import { ToolInput } from '@/components/tools/ToolInput'
 import { ToolOutput } from '@/components/tools/ToolOutput'
+import { RelatedTools } from '@/components/tools/RelatedTools'
 import type { Tool } from '@/data/tools'
 import { healthCalculations, financeCalculations } from '@/lib/tools/calculatorEngine'
 import { caseConverters, textAnalyzers } from '@/lib/tools/textProcessor'
@@ -288,6 +289,11 @@ export default function ToolContent({ tool }: ToolContentProps) {
               </Button>
             </div>
           )}
+        </div>
+
+        {/* Related Tools Section */}
+        <div className="mt-8">
+          <RelatedTools toolSlug={tool.slug} maxItems={6} />
         </div>
       </div>
     </ToolLayout>
